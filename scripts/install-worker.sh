@@ -3,6 +3,7 @@
 set -o pipefail
 set -o nounset
 set -o errexit
+set -x
 IFS=$'\n\t'
 
 TEMPLATE_DIR=${TEMPLATE_DIR:-/tmp/worker}
@@ -91,46 +92,34 @@ else
 fi
 
 ################################################################################
-### iptables ###################################################################
+### Containerd #################################################################
 ################################################################################
 
-# Enable forwarding via iptables
-sudo bash -c "/sbin/iptables-save > /etc/sysconfig/iptables"
+cat <<EOF | sudo tee -a /etc/modules-load.d/containerd.conf
+overlay
+br_netfilter
+EOF
 
-sudo mv $TEMPLATE_DIR/iptables-restore.service /etc/systemd/system/iptables-restore.service
+cat <<EOF | sudo tee -a /etc/sysctl.d/99-kubernetes-cri.conf
+net.bridge.bridge-nf-cal-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
 
-sudo systemctl daemon-reload
-sudo systemctl enable iptables-restore
-
-################################################################################
-### Docker #####################################################################
-################################################################################
+sudo mv $TEMPLATE_DIR/containerd.service /etc/systemd/containerd.service
 
 sudo yum install -y yum-utils device-mapper-persistent-data lvm2
 
 INSTALL_DOCKER="${INSTALL_DOCKER:-true}"
 if [[ "$INSTALL_DOCKER" == "true" ]]; then
-    sudo amazon-linux-extras enable docker
-    sudo groupadd -fog 1950 docker && sudo useradd --gid 1950 docker
-    sudo yum install -y docker-${DOCKER_VERSION}*
-    sudo usermod -aG docker $USER
 
-    # Remove all options from sysconfig docker.
-    sudo sed -i '/OPTIONS/d' /etc/sysconfig/docker
+    sudo yum install -y containerd-${CONTAINERD_VERSION}
+    sudo mkdir -p /etc/containerd
+    sudo systemctl enable containerd
 
-    sudo mkdir -p /etc/docker
-    sudo mv $TEMPLATE_DIR/docker-daemon.json /etc/docker/daemon.json
-    sudo chown root:root /etc/docker/daemon.json
+    sudo mkdir -p /etc/cni/net.d
+    sudo mv $TEMPLATE_DIR/10-containerd-net.conflist /etc/cni/net.d/10-containerd-net.conflist
 
-    # https://github.com/awslabs/amazon-eks-ami/issues/563
-    # Due to an issue with the latest containerd, customers are seeing
-    # pods getting stuck in terminating, so we need to downgrade containerd
-    # until the issue is fixed upstream or we have another workaround.
-    sudo yum downgrade -y containerd-${CONTAINERD_VERSION}
-
-    # Enable docker daemon to start on boot.
-    sudo systemctl daemon-reload
-    sudo systemctl enable docker
 fi
 
 ################################################################################
@@ -223,7 +212,7 @@ sudo chown root:root /etc/kubernetes/kubelet/kubelet-config.json
 
 sudo systemctl daemon-reload
 # Disable the kubelet until the proper dropins have been configured
-sudo systemctl disable kubelet
+# sudo systemctl disable kubelet
 
 ################################################################################
 ### EKS ########################################################################

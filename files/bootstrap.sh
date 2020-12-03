@@ -326,11 +326,6 @@ Environment='KUBELET_EXTRA_ARGS=$KUBELET_EXTRA_ARGS'
 EOF
 fi
 
-# Replace with custom docker config contents.
-if [[ -n "$DOCKER_CONFIG_JSON" ]]; then
-    echo "$DOCKER_CONFIG_JSON" > /etc/docker/daemon.json
-    systemctl restart docker
-fi
 
 if [[ "$ENABLE_DOCKER_BRIDGE" = "true" ]]; then
     # Enabling the docker bridge network. We have to disable live-restore as it
@@ -340,5 +335,7 @@ if [[ "$ENABLE_DOCKER_BRIDGE" = "true" ]]; then
 fi
 
 systemctl daemon-reload
+systemctl enable containerd
 systemctl enable kubelet
+systemctl start containerd
 systemctl start kubelet

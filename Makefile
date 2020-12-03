@@ -9,10 +9,10 @@ binary_bucket_region ?= $(AWS_DEFAULT_REGION)
 arch ?= x86_64
 ifeq ($(arch), arm64)
 instance_type ?= a1.large
-ami_name ?= amazon-eks-arm64-node-$(K8S_VERSION_MINOR)-v$(shell date +'%Y%m%d')
+ami_name ?= amazon-eks-arm64-node-$(K8S_VERSION_MINOR)-v$(shell date +'%Y%m%d%M%S')
 else
 instance_type ?= m4.large
-ami_name ?= amazon-eks-node-$(K8S_VERSION_MINOR)-v$(shell date +'%Y%m%d')
+ami_name ?= amazon-eks-node-$(K8S_VERSION_MINOR)-v$(shell date +'%Y%m%d%M%S')
 endif
 
 ifeq ($(aws_region), cn-northwest-1)
