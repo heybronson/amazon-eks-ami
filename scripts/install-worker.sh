@@ -111,8 +111,8 @@ sudo yum install -y yum-utils device-mapper-persistent-data lvm2
 INSTALL_DOCKER="${INSTALL_DOCKER:-true}"
 if [[ "$INSTALL_DOCKER" == "true" ]]; then
     sudo amazon-linux-extras enable docker
-    sudo groupadd -fog 1950 docker && sudo useradd --gid 1950 docker
     sudo yum install -y docker-${DOCKER_VERSION}*
+    sudo groupadd docker
     sudo usermod -aG docker $USER
 
     # Remove all options from sysconfig docker.
